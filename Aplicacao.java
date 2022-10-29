@@ -43,9 +43,13 @@ class Estado {
         this.y = "";
     }
 
-    public Estado(String identificador, String nome) {
+    public Estado(String identificador, String nome, String x, String y, boolean inicio, boolean fim) {
         this.identificador = identificador;
         this.nome = nome;
+        this.x = x;
+        this.y = y;
+        this.inicio = inicio;
+        this.fim = fim;
     }
 
     // Set e Get do Identificador
@@ -120,10 +124,10 @@ class Transicao {
         this.valorConsumido = "";
     }
 
-    public Transicao(String identificadorOrigem, String identificadorDestino, String nome) {
+    public Transicao(String identificadorOrigem, String identificadorDestino, String valorConsumido) {
         this.identificadorOrigem = identificadorOrigem;
         this.identificadorDestino = identificadorDestino;
-        this.valorConsumido = nome;
+        this.valorConsumido = valorConsumido;
     }
 
     // Get e Set do Identificador da Origem
@@ -162,9 +166,7 @@ class EntradaAFN {
     ArrayList<Estado> estados = new ArrayList<>();
     ArrayList<Transicao> transicoes = new ArrayList<>();
 
-    public EntradaAFN () {}
-
-    public void LerArquivoXML() {
+    public EntradaAFN() {
         DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
         try {
             DocumentBuilder construtor = fabrica.newDocumentBuilder();
@@ -183,20 +185,13 @@ class EntradaAFN {
                     Element elemento = (Element) item;
 
                     String identificador = elemento.getAttribute("id");
+                    String nome = elemento.getAttribute("name");
                     String x = elemento.getElementsByTagName("x").item(0).getTextContent();
                     String y = elemento.getElementsByTagName("y").item(0).getTextContent();
                     Boolean inicio = (elemento.getElementsByTagName("initial").item(0) != null)? true : false;
                     Boolean fim = (elemento.getElementsByTagName("final").item(0) != null)? true : false;
 
-                    /*                
-                        System.out.println("__________________________________");
-                        System.out.println("Elemento :" + item.getNodeName());
-                        System.out.println("Id : " + identificador);
-                        System.out.println("x : " + x);
-                        System.out.println("y : " + y);
-                        System.out.println("inicio : " + inicio);
-                        System.out.println("fim : " + fim);
-                    */
+                    this.estados.add(new Estado(identificador, nome, x, y, inicio, fim));
                 }                
             }
 
@@ -211,19 +206,47 @@ class EntradaAFN {
                     String identificadorDestino = elemento.getElementsByTagName("to").item(0).getTextContent();
                     String valorConsumido = elemento.getElementsByTagName("read").item(0).getTextContent();
                     
-                    /*
-                        System.out.println("__________________________________");
-                        System.out.println("Elemento :" + item.getNodeName());
-                        System.out.println("Id Origem : " + identificadorOrigem);
-                        System.out.println("Id Destino : " + identificadorDestino);
-                        System.out.println("Valor consumido : " + valorConsumido);
-                    */
+                    this.transicoes.add(new Transicao(identificadorOrigem, identificadorDestino, valorConsumido));
                 }                
             }
 
         } catch (ParserConfigurationException | SAXException | IOException e) {
             System.out.println("ERRO: Não foi possível ler o arquivo XML.");
         }
+    }
+
+    public void printEstados () {
+        if (this.estados != null) {
+            System.out.println("\t - - - ESTADOS - - -");
+            this.estados.forEach(
+                estadoList -> {
+                    System.out.println("Identificador: " + estadoList.getIdentificador());
+                    System.out.println("Inicio: " + estadoList.getInicio());
+                    System.out.println("Fim: " + estadoList.getFim());
+                    System.out.println("\t - - - - - -");
+                }
+            );
+        }
+    }
+
+    public void printTransicoes () {
+        if (this.transicoes != null) {
+            System.out.println("\t - - - TRANSICOES - - -");
+            this.transicoes.forEach(
+                transicaoList -> {
+                    System.out.println("Identificador de Origem: " + transicaoList.getIdentificadorOrigem());
+                    System.out.println("Identificador de Destino: " + transicaoList.getIdentificadorDestino());
+                    System.out.println("Valor Consumido: " + transicaoList.getValorConsumido());
+                    System.out.println("\t - - - - - -");
+                }
+            );
+        }
+    }
+
+    public void toAFNString() {
+        printEstados();
+        System.out.println("\n.\n.\n");
+        printTransicoes();
     }
 }
 
@@ -255,29 +278,29 @@ class SaidaAFD {
 
         if (this.estados != null) {
             this.estados.forEach(
-                estado -> {
-                    Element state = documento.createElement("state");
+                estadoList -> {
+                    Element estado = documento.createElement("state");
                     Element x = documento.createElement("x");
                     Element y = documento.createElement("y");
                     Element inicio = documento.createElement("initial");
                     Element fim = documento.createElement("final");
 
-                    automato.appendChild(state);
-                    state.setAttribute("id", estado.getIdentificador());
-                    state.setAttribute("name", estado.getNome());
+                    automato.appendChild(estado);
+                    estado.setAttribute("id", estadoList.getIdentificador());
+                    estado.setAttribute("name", estadoList.getNome());
 
-                    state.appendChild(x);
-                    x.setTextContent(estado.getX());
+                    estado.appendChild(x);
+                    x.setTextContent(estadoList.getX());
 
-                    state.appendChild(y);
-                    x.setTextContent(estado.getY());
+                    estado.appendChild(y);
+                    y.setTextContent(estadoList.getY());
 
-                    if (estado.getInicio()) {
-                        state.appendChild(inicio);
+                    if (estadoList.getInicio()) {
+                        estado.appendChild(inicio);
                     }
 
-                    if (estado.getFim()) {
-                        state.appendChild(fim);
+                    if (estadoList.getFim()) {
+                        estado.appendChild(fim);
                     }
                 }
             );
@@ -285,8 +308,22 @@ class SaidaAFD {
 
         if (this.transicoes != null) {
             this.transicoes.forEach(
-                Transicao -> {
-                    
+                transicaoList -> {
+                    Element transicao = documento.createElement("transition");
+                    Element identificadorOrigem = documento.createElement("from");
+                    Element identificadorDestino = documento.createElement("to");
+                    Element valorConsumido = documento.createElement("read");
+
+                    automato.appendChild(transicao);
+
+                    transicao.appendChild(identificadorOrigem);
+                    identificadorOrigem.setTextContent(transicaoList.getIdentificadorOrigem());
+
+                    transicao.appendChild(identificadorDestino);
+                    identificadorDestino.setTextContent(transicaoList.getIdentificadorDestino());
+
+                    transicao.appendChild(valorConsumido);
+                    valorConsumido.setTextContent(transicaoList.getValorConsumido());
                 }
             );
         }
@@ -310,14 +347,17 @@ class SaidaAFD {
 }
 
 public class Aplicacao {
-    public static void main(String args[]) {
-        /* 
-            EntradaAFN automatoFinitoNaoDeterministico = new EntradaAFN();
-            automatoFinitoNaoDeterministico.LerArquivoXML();
-        */
+    public static void main(String args[]) throws Exception {
+        EntradaAFN automatoFinitoNaoDeterministico = new EntradaAFN();
+        automatoFinitoNaoDeterministico.toAFNString();
+        
 
         try {
             SaidaAFD automatoFinitoDeterministico = new SaidaAFD();
+            // teste
+            automatoFinitoDeterministico.estados.addAll(automatoFinitoNaoDeterministico.estados);
+            automatoFinitoDeterministico.transicoes.addAll(automatoFinitoNaoDeterministico.transicoes);
+            
             automatoFinitoDeterministico.EscreverArquivoXML();   
         } catch (Exception e) {
             System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
