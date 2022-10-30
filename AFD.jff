@@ -22,6 +22,11 @@
             <read>0</read>
         </transition>
         <transition>
+            <from>1</from>
+            <to>0</to>
+            <read>0</read>
+        </transition>
+        <transition>
             <from>0</from>
             <to>1</to>
             <read>0</read>

@@ -3,6 +3,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -105,6 +106,18 @@ class Estado {
     public String getY() {
         return this.y;
     }
+
+    public static Estado procurarEstado(ArrayList<Estado> estados, String nome) {
+        Estado estado = new Estado();
+  
+        for (int i = 0; i < estados.size(); i++) {
+            if (estados.get(i).getNome().equals(nome)) {
+                estado = estados.get(i);
+            }
+        }
+  
+        return (estado);
+    }
 }
 
 /*
@@ -159,18 +172,18 @@ class Transicao {
 }
 
 /*
- * Classe: EntradaAFN
+ * Classe: AFN
  * Descrição: Representa o AFN lido pelo programa.
  */
-class EntradaAFN {
+class AFN {
     ArrayList<Estado> estados = new ArrayList<>();
     ArrayList<Transicao> transicoes = new ArrayList<>();
 
-    public EntradaAFN() {
+    public AFN() {
         DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
         try {
             DocumentBuilder construtor = fabrica.newDocumentBuilder();
-            Document documento = (Document) construtor.parse(new File("./entradaAFN.jff"));
+            Document documento = (Document) construtor.parse(new File("./AFN.jff"));
 
             documento.getDocumentElement().normalize();
 
@@ -251,14 +264,12 @@ class EntradaAFN {
 }
 
 /*
- * Classe: SaidaAFD
+ * Classe: AFD
  * Descrição: Representa o AFD que será gerado pelo programa.
  */
-class SaidaAFD {
+class AFD {
     ArrayList<Estado> estados = new ArrayList<>();
     ArrayList<Transicao> transicoes = new ArrayList<>();
-
-    public SaidaAFD () {}
 
     public void EscreverArquivoXML() throws ParserConfigurationException, TransformerException {
         DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
@@ -328,7 +339,7 @@ class SaidaAFD {
             );
         }
 
-        try (FileOutputStream saida = new FileOutputStream(".\\test.jff")) {
+        try (FileOutputStream saida = new FileOutputStream(".\\AFD.jff")) {
             EscreverArquivoXML(documento, saida);
         } catch (IOException e) {
             System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
@@ -344,23 +355,141 @@ class SaidaAFD {
         transformador.setOutputProperty(OutputKeys.INDENT, "yes");
         transformador.transform(fonte, resultado);
     }
+
+    public void printEstados () {
+        if (this.estados != null) {
+            System.out.println("\t - - - ESTADOS - - -");
+            this.estados.forEach(
+                estadoList -> {
+                    System.out.println("Identificador: " + estadoList.getIdentificador());
+                    System.out.println("Inicio: " + estadoList.getInicio());
+                    System.out.println("Fim: " + estadoList.getFim());
+                    System.out.println("\t - - - - - -");
+                }
+            );
+        }
+    }
+
+    public void printTransicoes () {
+        if (this.transicoes != null) {
+            System.out.println("\t - - - TRANSICOES - - -");
+            this.transicoes.forEach(
+                transicaoList -> {
+                    System.out.println("Identificador de Origem: " + transicaoList.getIdentificadorOrigem());
+                    System.out.println("Identificador de Destino: " + transicaoList.getIdentificadorDestino());
+                    System.out.println("Valor Consumido: " + transicaoList.getValorConsumido());
+                    System.out.println("\t - - - - - -");
+                }
+            );
+        }
+    }
+
+    public void toAFDString() {
+        printEstados();
+        System.out.println("\n.\n.\n");
+        printTransicoes();
+    }
 }
 
 public class Aplicacao {
-    public static void main(String args[]) throws Exception {
-        EntradaAFN automatoFinitoNaoDeterministico = new EntradaAFN();
-        automatoFinitoNaoDeterministico.toAFNString();
-        
 
-        try {
-            SaidaAFD automatoFinitoDeterministico = new SaidaAFD();
-            // teste
-            automatoFinitoDeterministico.estados.addAll(automatoFinitoNaoDeterministico.estados);
-            automatoFinitoDeterministico.transicoes.addAll(automatoFinitoNaoDeterministico.transicoes);
-            
-            automatoFinitoDeterministico.EscreverArquivoXML();   
-        } catch (Exception e) {
-            System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
+    public static void converterAFN (AFN afn) {
+        ArrayList<Estado> estadosGlob = new ArrayList<>();
+        AFD afd = new AFD();
+
+        afn.estados.forEach(
+            estado -> {
+                if (estado.getInicio()) {
+                    estadosGlob.add(estado);
+                }
+            }
+        );
+
+        for (int i = 0; i < estadosGlob.size(); i++) {
+            Estado atual = Estado.procurarEstado(afn.estados, estadosGlob.get(i).getNome());
+            Estado novo = Transicao.unirTransicoes(estadosGlob.get(i), atual);
+
+            /*if(!Estado.isEstadoInVet(novo, Main2.vetEstadosGlobais)) {
+                Main2.vetEstadosGlobais = Estado.addEstado(Main2.vetEstadosGlobais, novo);
+            }*/
+        }
+    }
+
+    public static boolean verificarAFN (AFN afn) {
+        boolean teste = false;
+        if (afn.estados != null && afn.transicoes != null) {
+            for (int i = 0; i < afn.estados.size(); i++) {
+                ArrayList<String> valores = new ArrayList<>();
+                for (int j = 0; j < afn.transicoes.size(); j++) {
+                    if (afn.transicoes.get(j).getIdentificadorOrigem().compareTo(afn.estados.get(i).getIdentificador()) == 0) {
+                        if (valores != null) {
+                            for (int k = 0; k < valores.size(); k++) {
+                                if (valores.get(k).compareTo(afn.transicoes.get(j).getValorConsumido()) == 0) {
+                                    teste = true;
+                                }
+                            };
+
+                            if (!teste) {
+                                valores.add(afn.transicoes.get(j).getValorConsumido());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return(teste);
+    }
+
+    public static void main(String args[]) throws Exception {
+        AFN afn = new AFN();
+        AFD afd = new AFD();
+        Scanner scan = new Scanner(System.in);
+        int opcao = -1;
+        
+        if (System.getProperty("os.name").contains("Windows")) {
+            new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+        } else {
+            Runtime.getRuntime().exec("clear");
+        }
+
+        while (opcao != 0) {
+            System.out.println("Trabalho de FTC - Ciencia da Computacao - 2022");
+            System.out.println("Autores: Ricardo Portilho de Andrade | Hugo Souza Almeida");
+            System.out.println("Opcao 0 - Fechar programa.");
+            System.out.println("Opcao 1 - Transformar AFN em um AFD.");
+            System.out.println("Opcao 2 - Testar se o AFN e AFD aceitam a mesma linguagem.");
+            System.out.print("Digite o numero da opcao: ");
+            opcao = scan.nextInt();
+         
+            if (opcao == 1) { 
+                if (verificarAFN(afn)) {
+                    try {
+                        
+                        System.out.println("AQUI");
+                        afd.EscreverArquivoXML();   
+                    } catch (Exception e) {
+                        System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
+                    }
+                } else {
+                    System.out.println("\n\tERRO: O automoto passado nao e um AFN.\n");
+                }
+            } else if (opcao == 2) {
+
+            } else if (opcao != 0) {
+                System.out.println("\n\tERRO: Opcao invalida\n");
+            }
+
+            if (opcao != 0) {
+                System.out.print("\nPrecione Entrer para continuar... ");
+                System.in.read();
+            }
+
+            if (System.getProperty("os.name").contains("Windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                Runtime.getRuntime().exec("clear");
+            }
         }
     }
 }
