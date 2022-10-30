@@ -128,6 +128,20 @@ class Estado {
   
         return (estado);
     }
+
+    public void printTransicoes () {
+        if (this.transicoes != null) {
+            System.out.println("\t - - - TRANSICOES - - -");
+            this.transicoes.forEach(
+                transicaoList -> {
+                    System.out.println("Identificador de Origem: " + transicaoList.getIdentificadorOrigem());
+                    System.out.println("Identificador de Destino: " + transicaoList.getIdentificadorDestino());
+                    System.out.println("Valor Consumido: " + transicaoList.getValorConsumido());
+                    System.out.println("\t - - - - - -");
+                }
+            );
+        }
+    }
 }
 
 /*
@@ -281,7 +295,6 @@ class Transicao {
 
                             if (!existe) {
                                 estadosDestino.add(new Estado(estadosBase.get(k)));
-                                transicaoDestino.add(new Transicao(transicoes.get(j)));
                             }
                         }
                     }
@@ -775,14 +788,13 @@ public class Aplicacao {
             opcao = scan.nextInt();
          
             if (opcao == 1) { 
-                if (verificarAFN(afn)) {
-                    try {
-                        afd.EscreverArquivoXML();   
-                    } catch (Exception e) {
-                        System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
-                    }
-                } else {
-                    System.out.println("\n\tERRO: O automoto passado nao e um AFN.\n");
+                try {
+                    afd.estados = converterAFN(afn);
+                    afd.printEstados();
+                    afd.printTransicoes();
+                    afd.EscreverArquivoXML();   
+                } catch (Exception e) {
+                    System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
                 }
             } else if (opcao == 2) {
                 limparTerminal();
