@@ -182,6 +182,8 @@ class Transicao {
 
     public static Estado unirTransicoes (Estado origem, ArrayList<Transicao> transicoes, ArrayList<Estado> estadosBase, ArrayList<Estado> estadoGlob) {
         ArrayList<String> simbolos = new ArrayList<>();
+        ArrayList<Estado> estadosDestino = new ArrayList<>();
+        ArrayList<Transicao> transicaoDestino = new ArrayList<>();
 
         for (int i = 0; i < transicoes.size(); i++) {
             boolean existe = false;
@@ -197,8 +199,6 @@ class Transicao {
         }
 
         for (int i = 0; i < simbolos.size(); i++) {
-            ArrayList<Estado> estadosDestino = new ArrayList<>();
-
             for (int j = 0; j < transicoes.size(); j++) {
                 if (transicoes.get(j).valorConsumido.compareTo(simbolos.get(i)) == 0) {
                     for (int k = 0; k < estadosBase.size(); k++) {
@@ -212,6 +212,7 @@ class Transicao {
 
                             if (!existe) {
                                 estadosDestino.add(new Estado(estadosBase.get(k)));
+                                transicaoDestino.add(new Transicao(transicoes.get(j)));
                             }
                         }
                     }
@@ -234,10 +235,11 @@ class Transicao {
                     if (!existe) {
                         estadoGlob.add(new Estado(estadosDestino.get(0)));
                     }
+                } else {
+                    Transicao novaTransicao = new Transicao();
+                    estadosDestino
                 }
-            } else {
-
-            }
+            } 
         }
 
         return origem;
@@ -551,7 +553,7 @@ class AFD {
 }
 
 public class Aplicacao {
-    public static void converterAFN (AFN afn) throws Exception {
+    public static ArrayList<Estado> converterAFN (AFN afn) throws Exception {
         ArrayList<Estado> estadosGlobTotal = new ArrayList<>();
         ArrayList<Estado> estadosGlobTotalSemTransicao = new ArrayList<>();
         ArrayList<Estado> estadosGlob = new ArrayList<>();
@@ -590,13 +592,22 @@ public class Aplicacao {
         );
 
         for (int i = 0; i < estadosGlob.size(); i++) {
+            boolean existe = false;
             Estado atual = Estado.procurarEstado(estadosGlobTotal, estadosGlob.get(i).getNome());
             Estado novo = Transicao.unirTransicoes(estadosGlob.get(i), atual.transicoes, estadosGlobTotalSemTransicao, estadosGlob);
 
-            /*if(!Estado.isEstadoInVet(novo, Main2.vetEstadosGlobais)) {
-                Main2.vetEstadosGlobais = Estado.addEstado(Main2.vetEstadosGlobais, novo);
-            }*/
+            for (int j = 0; j < estadosGlob.size(); j++) {
+                if (novo.getIdentificador().compareTo(estadosGlob.get(j).getIdentificador()) == 0) {
+                    existe = true;
+                }
+            }
+
+            if(!existe) {
+                estadosGlob.add(novo);
+            }
         }
+
+        return estadosGlob;
     }
 
     public static boolean verificarAFN (AFN afn) {
