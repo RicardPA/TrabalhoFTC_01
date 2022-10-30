@@ -33,6 +33,7 @@ class Estado {
     private String y;
     private boolean inicio;
     private boolean fim;
+    ArrayList<Transicao> transicoes = new ArrayList<>();
 
     // Construtores do Estado
     public Estado() {
@@ -51,6 +52,15 @@ class Estado {
         this.y = y;
         this.inicio = inicio;
         this.fim = fim;
+    }
+
+    public Estado(Estado estado) {
+        this.identificador = estado.getIdentificador();
+        this.nome = estado.getNome();
+        this.x = estado.getX();
+        this.y = estado.getY();
+        this.inicio = estado.getInicio();
+        this.fim = estado.getFim();
     }
 
     // Set e Get do Identificador
@@ -168,6 +178,69 @@ class Transicao {
 
     public String getValorConsumido() {
         return valorConsumido;
+    }
+
+    public static Estado unirTransicoes (Estado origem, ArrayList<Transicao> transicoes, ArrayList<Estado> estadosBase, ArrayList<Estado> estadoGlob) {
+        ArrayList<String> simbolos = new ArrayList<>();
+
+        for (int i = 0; i < transicoes.size(); i++) {
+            boolean existe = false;
+            for (int j = 0; j < simbolos.size(); j++) {
+                if (simbolos.get(j).compareTo(transicoes.get(i).getValorConsumido()) == 0) {
+                    existe = true;
+                }
+            }
+
+            if (!existe) {
+                simbolos.add(transicoes.get(i).valorConsumido);
+            }
+        }
+
+        for (int i = 0; i < simbolos.size(); i++) {
+            ArrayList<Estado> estadosDestino = new ArrayList<>();
+
+            for (int j = 0; j < transicoes.size(); j++) {
+                if (transicoes.get(j).valorConsumido.compareTo(simbolos.get(i)) == 0) {
+                    for (int k = 0; k < estadosBase.size(); k++) {
+                        if (estadosBase.get(k).getIdentificador().compareTo(transicoes.get(j).getIdentificadorDestino()) == 0) {
+                            boolean existe = false;
+                            for (int l = 0; l < estadosDestino.size(); l++) {
+                                if (estadosDestino.get(l).getIdentificador().compareTo(estadosBase.get(k).getIdentificador()) == 0) {
+                                    existe = true;
+                                }
+                            }
+
+                            if (!existe) {
+                                estadosDestino.add(new Estado(estadosBase.get(k)));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (estadosDestino.size() > 0) {
+                Transicao novaTransicao = new Transicao();
+                
+                if (estadosDestino.size() == 1) {
+                    boolean existe = false;
+                    novaTransicao = new Transicao(origem.getIdentificador(), estadosDestino.get(0).getIdentificador(), simbolos.get(0));
+                    
+                    for (int l = 0; l < estadoGlob.size(); l++) {
+                        if (estadoGlob.get(l).getIdentificador().compareTo(estadosDestino.get(0).getIdentificador()) == 0) {
+                            existe = true;
+                        }
+                    }
+    
+                    if (!existe) {
+                        estadoGlob.add(new Estado(estadosDestino.get(0)));
+                    }
+                }
+            } else {
+                
+            }
+        }
+
+        return origem;
     }
 }
 
@@ -392,12 +465,39 @@ class AFD {
 }
 
 public class Aplicacao {
-
-    public static void converterAFN (AFN afn) {
+    public static void converterAFN (AFN afn) throws Exception {
+        ArrayList<Estado> estadosGlobTotal = new ArrayList<>();
+        ArrayList<Estado> estadosGlobTotalSemTransicao = new ArrayList<>();
         ArrayList<Estado> estadosGlob = new ArrayList<>();
         AFD afd = new AFD();
 
+        try {
+            estadosGlobTotalSemTransicao = new ArrayList<>(afn.estados);
+        }
+        catch (Exception e) {
+            e.printStackTrace ();
+        }
+
         afn.estados.forEach(
+            estado -> {
+                afn.transicoes.forEach(
+                    transicao -> {
+                        if (transicao.getIdentificadorOrigem() == estado.getIdentificador()) {
+                            estado.transicoes.add(transicao);
+                        }
+                    }
+                );
+            }
+        );
+
+        try {
+            estadosGlobTotal = new ArrayList<>(afn.estados);
+        }
+        catch (Exception e) {
+            e.printStackTrace ();
+        }
+
+        estadosGlobTotal.forEach(
             estado -> {
                 if (estado.getInicio()) {
                     estadosGlob.add(estado);
@@ -406,8 +506,8 @@ public class Aplicacao {
         );
 
         for (int i = 0; i < estadosGlob.size(); i++) {
-            Estado atual = Estado.procurarEstado(afn.estados, estadosGlob.get(i).getNome());
-            Estado novo = Transicao.unirTransicoes(estadosGlob.get(i), atual);
+            Estado atual = Estado.procurarEstado(estadosGlobTotal, estadosGlob.get(i).getNome());
+            Estado novo = Transicao.unirTransicoes(estadosGlob.get(i), atual.transicoes, estadosGlobTotalSemTransicao, estadosGlob);
 
             /*if(!Estado.isEstadoInVet(novo, Main2.vetEstadosGlobais)) {
                 Main2.vetEstadosGlobais = Estado.addEstado(Main2.vetEstadosGlobais, novo);
