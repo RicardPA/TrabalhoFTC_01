@@ -1,4 +1,4 @@
-# Repositorio do trabalho 1 de Fundamentos teóricos da computação
+# Repositório do trabalho 1 de Fundamentos teóricos da Computação da puc mg, alunos Ricardo e Hugo
 Um  autômato  finito  não  determinístico  (AFN)  pode  ser  simulado  a  partir  de  sua  conversão  em  um autômato finito determinístico (AFD) que reconheça  a mesma linguagem. O objetivo deste trabalho é implementar: 
 * um programa converta um AFN qualquer para um AFD equivalente; e 
 * um simulador de AFD. 
