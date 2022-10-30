@@ -131,6 +131,69 @@ class Estado {
 }
 
 /*
+ * Classe: EstadoTemp
+ * Descrição: Estado temporario usado para conversao
+ */
+class EstadoTemp {
+    ArrayList<Estado> destinos = new ArrayList<>();
+    Estado origem = new Estado();
+
+    public EstadoTemp (ArrayList<Estado> estados) {
+        this.destinos = estados;
+    }
+
+    public Estado converterEstado(ArrayList<Estado> estados, ArrayList<Estado> estadosGlob) {
+        Estado resposta = new Estado();
+        String nome = new String();
+        String x = new String();
+        String y = new String();
+
+        ArrayList<Estado> destinosOrdenados = new ArrayList<>();
+        destinosOrdenados.addAll(this.destinos);
+
+        for (int i = 0; i < destinosOrdenados.size(); i++) {
+            for (int j = 0; j < destinosOrdenados.size(); j++) {
+                if (Integer.parseInt(destinosOrdenados.get(j).getIdentificador()) < Integer.parseInt(destinosOrdenados.get(i).getIdentificador())) {
+                    Estado aux = destinosOrdenados.get(i);
+                    destinosOrdenados.set(i, destinosOrdenados.get(j));
+                    destinosOrdenados.set(j, aux);
+                }
+            }
+        }
+
+        this.destinos = destinosOrdenados;
+
+        for (int i = 0; i < this.destinos.size(); i++) {
+            Estado atualAFN = Estado.procurarEstado(estados, this.destinos.get(i).getNome());
+            atualAFN = (Integer.parseInt(atualAFN.getIdentificador()) < 0)? this.destinos.get(i): atualAFN; 
+            if(atualAFN.getInicio()){
+                resposta.setInicio(true);;
+            }
+            
+            nome += "|" + atualAFN.getNome();
+            x += atualAFN.getX();
+            y += atualAFN.getY();
+
+            for (int j = 0; j < atualAFN.transicoes.size(); j++) {
+                Transicao nova = new Transicao(atualAFN.transicoes.get(i).getIdentificadorOrigem(), atualAFN.transicoes.get(i).getIdentificadorDestino(), atualAFN.transicoes.get(i).getValorConsumido());
+                atualAFN.transicoes.add(nova);
+            }
+        }
+
+        String novoIdentificador = (estados.size() + estadosGlob.size() + "");
+        resposta.setInicio(false);
+        resposta.setNome(nome);
+        resposta.setIdentificador(novoIdentificador);
+        resposta.setX(x);
+        resposta.setY(y);
+        
+        this.origem = resposta;
+
+        return resposta;
+    }
+}
+
+/*
  * Classe: Transições
  * Descrição: Representa as transições presentes nos 
  * AFNs e AFDs utilizados nos métodos.
@@ -151,6 +214,12 @@ class Transicao {
         this.identificadorOrigem = identificadorOrigem;
         this.identificadorDestino = identificadorDestino;
         this.valorConsumido = valorConsumido;
+    }
+
+    public Transicao(Transicao transicao) {
+        this.identificadorOrigem = transicao.getIdentificadorOrigem();
+        this.identificadorDestino = transicao.getIdentificadorDestino();
+        this.valorConsumido = transicao.getValorConsumido();
     }
 
     // Get e Set do Identificador da Origem
@@ -220,11 +289,12 @@ class Transicao {
             }
 
             if (estadosDestino.size() > 0) {
+                boolean trasicaoExiste = false;
                 Transicao novaTransicao = new Transicao();
                 
                 if (estadosDestino.size() == 1) {
                     boolean existe = false;
-                    novaTransicao = new Transicao(origem.getIdentificador(), estadosDestino.get(0).getIdentificador(), simbolos.get(0));
+                    novaTransicao = new Transicao(origem.getIdentificador(), estadosDestino.get(0).getIdentificador(), simbolos.get(i));
                     
                     for (int l = 0; l < estadoGlob.size(); l++) {
                         if (estadoGlob.get(l).getIdentificador().compareTo(estadosDestino.get(0).getIdentificador()) == 0) {
@@ -236,13 +306,54 @@ class Transicao {
                         estadoGlob.add(new Estado(estadosDestino.get(0)));
                     }
                 } else {
-                    Transicao novaTransicao = new Transicao();
-                    estadosDestino
+                    boolean existe = false;
+                    EstadoTemp temp = new EstadoTemp(estadosDestino);
+                    Estado novo = temp.converterEstado(estadosBase, estadoGlob);
+                    
+                    for (int l = 0; l < estadoGlob.size(); l++) {
+                        if (estadoGlob.get(l).getIdentificador().compareTo(novo.getIdentificador()) == 0) {
+                            existe = true;
+                        }
+                    }
+
+                    if(!existe) {
+                        estadoGlob.add(novo);
+                        novo = Transicao.unirTransicoes(novo, novo.transicoes, estadosBase, estadoGlob);
+                    } else {
+                        novo = Estado.procurarEstado(estadoGlob, novo.getNome());
+                    }
+
+                    novaTransicao = new Transicao(origem.getIdentificador(), novo.getIdentificador(), simbolos.get(i));
+                }
+
+                for (int j = 0; j < origem.transicoes.size(); j++) {
+                    if (origem.transicoes.get(j).getIdentificadorOrigem().compareTo(novaTransicao.getIdentificadorOrigem()) == 0 &&
+                        origem.transicoes.get(j).getIdentificadorDestino().compareTo(novaTransicao.getIdentificadorDestino()) == 0 &&
+                        origem.transicoes.get(j).getValorConsumido().compareTo(novaTransicao.getValorConsumido()) == 0) {
+                        trasicaoExiste = true;
+                    }
+                }
+
+                if (!trasicaoExiste) {
+                    origem.transicoes = Transicao.removeTransicaoComSimbolo(origem.transicoes, simbolos.get(i));
+                    origem.transicoes.add(novaTransicao);
                 }
             } 
         }
 
         return origem;
+    }
+
+    public static ArrayList<Transicao> removeTransicaoComSimbolo (ArrayList<Transicao> transicoes, String simbolo)  {
+        ArrayList<Transicao> resposta = new ArrayList<>(transicoes);
+
+        for (int i = resposta.size()-1; i >=0; i--) {
+            if(resposta.get(i).getValorConsumido().compareTo(simbolo) == 0) {
+                resposta.remove(i);
+            }
+        }
+
+        return resposta;
     }
 }
 
