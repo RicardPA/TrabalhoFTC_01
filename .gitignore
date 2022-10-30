@@ -4,3 +4,6 @@ Estado.class
 EstadoSimulado.class
 Alfabeto.class
 Transicao.class
+AFD.class
+AFN.class
+Aplicacao.class
