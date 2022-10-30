@@ -236,7 +236,7 @@ class Transicao {
                     }
                 }
             } else {
-                
+
             }
         }
 
@@ -343,6 +343,55 @@ class AFN {
 class AFD {
     ArrayList<Estado> estados = new ArrayList<>();
     ArrayList<Transicao> transicoes = new ArrayList<>();
+
+    public void obterAFD() {
+        DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder construtor = fabrica.newDocumentBuilder();
+            Document documento = (Document) construtor.parse(new File("./AFD.jff"));
+
+            documento.getDocumentElement().normalize();
+
+            NodeList listaEstados = documento.getElementsByTagName("state");
+            NodeList listaTransicoes = documento.getElementsByTagName("transition");
+            
+            // Listar Estados
+            for (int i = 0; i < listaEstados.getLength(); i++) {
+                Node item = listaEstados.item(i);
+
+                if (item.getNodeType() == Node.ELEMENT_NODE) {
+                    Element elemento = (Element) item;
+
+                    String identificador = elemento.getAttribute("id");
+                    String nome = elemento.getAttribute("name");
+                    String x = elemento.getElementsByTagName("x").item(0).getTextContent();
+                    String y = elemento.getElementsByTagName("y").item(0).getTextContent();
+                    Boolean inicio = (elemento.getElementsByTagName("initial").item(0) != null)? true : false;
+                    Boolean fim = (elemento.getElementsByTagName("final").item(0) != null)? true : false;
+
+                    this.estados.add(new Estado(identificador, nome, x, y, inicio, fim));
+                }                
+            }
+
+            // Listar Transiões 
+            for (int i = 0; i < listaTransicoes.getLength(); i++) {
+                Node item = listaTransicoes.item(i);
+
+                if (item.getNodeType() == Node.ELEMENT_NODE) {
+                    Element elemento = (Element) item;
+
+                    String identificadorOrigem = elemento.getElementsByTagName("from").item(0).getTextContent();
+                    String identificadorDestino = elemento.getElementsByTagName("to").item(0).getTextContent();
+                    String valorConsumido = elemento.getElementsByTagName("read").item(0).getTextContent();
+                    
+                    this.transicoes.add(new Transicao(identificadorOrigem, identificadorDestino, valorConsumido));
+                }                
+            }
+
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            System.out.println("ERRO: Não foi possível ler o arquivo XML.");
+        }
+    }
 
     public void EscreverArquivoXML() throws ParserConfigurationException, TransformerException {
         DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
@@ -462,6 +511,43 @@ class AFD {
         System.out.println("\n.\n.\n");
         printTransicoes();
     }
+
+    public boolean verificaAFD(String palavra) {
+        Estado estadoAtual = new Estado();
+
+        for (int i = 0; i < this.estados.size(); i++) {
+            if (this.estados.get(i).getInicio()) {
+                estadoAtual = this.estados.get(i);
+            }
+        }
+
+        for (int i = 0; i < palavra.length(); i++) {
+            String valor = palavra.charAt(i) + "";
+            boolean existe = false; 
+            boolean mudou = false;
+
+            for (int j = 0; j < this.transicoes.size() && !mudou; j++) {
+                if (this.transicoes.get(j).getIdentificadorOrigem().compareTo(estadoAtual.getIdentificador()) == 0 &&
+                    this.transicoes.get(j).getValorConsumido().compareTo(valor) == 0) {
+
+                    existe = true;
+                    
+                    for (int k = 0; k < this.estados.size(); k++) {
+                        if (this.transicoes.get(j).getIdentificadorDestino().compareTo(this.estados.get(k).getIdentificador()) == 0) {
+                            mudou = true;
+                            estadoAtual = this.estados.get(k);
+                        }
+                    }
+                }
+            }
+
+            if (!existe) {
+                return(existe);
+            }
+        }
+
+        return estadoAtual.getFim();
+    }
 }
 
 public class Aplicacao {
@@ -473,8 +559,7 @@ public class Aplicacao {
 
         try {
             estadosGlobTotalSemTransicao = new ArrayList<>(afn.estados);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace ();
         }
 
@@ -492,8 +577,7 @@ public class Aplicacao {
 
         try {
             estadosGlobTotal = new ArrayList<>(afn.estados);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace ();
         }
 
@@ -541,17 +625,23 @@ public class Aplicacao {
         return(teste);
     }
 
-    public static void main(String args[]) throws Exception {
-        AFN afn = new AFN();
-        AFD afd = new AFD();
-        Scanner scan = new Scanner(System.in);
-        int opcao = -1;
-        
+    public static void limparTerminal () throws Exception {
         if (System.getProperty("os.name").contains("Windows")) {
             new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
         } else {
             Runtime.getRuntime().exec("clear");
         }
+    }
+
+    public static void main(String args[]) throws Exception {
+        AFN afn = new AFN();
+        AFD afd = new AFD();
+        Scanner scan = new Scanner(System.in);
+        int opcao = -1;
+        int opcaoVerificacao = -1;
+        String palavra = "";
+        
+        limparTerminal();
 
         while (opcao != 0) {
             System.out.println("Trabalho de FTC - Ciencia da Computacao - 2022");
@@ -565,8 +655,6 @@ public class Aplicacao {
             if (opcao == 1) { 
                 if (verificarAFN(afn)) {
                     try {
-                        
-                        System.out.println("AQUI");
                         afd.EscreverArquivoXML();   
                     } catch (Exception e) {
                         System.out.println("ERRO: Não foi possível escrever o arquivo XML.");
@@ -575,7 +663,23 @@ public class Aplicacao {
                     System.out.println("\n\tERRO: O automoto passado nao e um AFN.\n");
                 }
             } else if (opcao == 2) {
+                limparTerminal();
+                afd.obterAFD();
+                System.out.println("\t- - - VERIFICAR PALAVRA - - -");
+                while (opcaoVerificacao != 0) {
+                    scan.nextLine();
+                    System.out.print("\nColoque a palavra: ");
+                    palavra = scan.nextLine();
 
+                    String resultado = afd.verificaAFD(palavra)? "Aceita" : "Recusa";
+
+                    System.out.println("Resultado teste: " + resultado);
+                    System.out.println("\nOpcao 0 - Parar testes.");
+                    System.out.println("Opcao 1 - Cotinuar com testes.");
+                    System.out.print("Digite o numero da opcao: ");
+                    opcaoVerificacao = scan.nextInt();
+                }
+                opcaoVerificacao = -1;
             } else if (opcao != 0) {
                 System.out.println("\n\tERRO: Opcao invalida\n");
             }
@@ -585,11 +689,7 @@ public class Aplicacao {
                 System.in.read();
             }
 
-            if (System.getProperty("os.name").contains("Windows")) {
-                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-            } else {
-                Runtime.getRuntime().exec("clear");
-            }
+            limparTerminal();
         }
     }
 }
